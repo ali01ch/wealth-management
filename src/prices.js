@@ -45,38 +45,29 @@ function extractFromIranMarket(payload, silverPurity) {
 
   const usd = findSymbol(data, 'USD_IRR_FREE');
   const gold = findSymbol(data, 'GOLD_18K_IRR');
+  const xau = findSymbol(data, 'XAU_USD');
   const silverSymbol = silverPurity === '925' ? 'SILVER_925_IRR' : 'SILVER_999_IRR';
   const silver = findSymbol(data, silverSymbol) || findSymbol(data, 'SILVER_999_IRR');
 
   const changeOf = (item) =>
     toNumber(item.change_pct ?? item.change_percent ?? item.changePercent);
 
+  const mapItem = (item, extra = {}) =>
+    item
+      ? {
+          price: toNumber(item.price),
+          changePercent: changeOf(item),
+          updatedAt: item.updated_at || item.timestamp || null,
+          source: 'Iran Market',
+          ...extra,
+        }
+      : null;
+
   return {
-    usd: usd
-      ? {
-          price: toNumber(usd.price),
-          changePercent: changeOf(usd),
-          updatedAt: usd.updated_at || usd.timestamp || null,
-          source: 'Iran Market',
-        }
-      : null,
-    gold: gold
-      ? {
-          price: toNumber(gold.price),
-          changePercent: changeOf(gold),
-          updatedAt: gold.updated_at || gold.timestamp || null,
-          source: 'Iran Market',
-        }
-      : null,
-    silver: silver
-      ? {
-          price: toNumber(silver.price),
-          changePercent: changeOf(silver),
-          updatedAt: silver.updated_at || silver.timestamp || null,
-          source: 'Iran Market',
-          purity: silverPurity,
-        }
-      : null,
+    usd: mapItem(usd),
+    gold: mapItem(gold),
+    silver: mapItem(silver, { purity: silverPurity }),
+    xau: mapItem(xau),
   };
 }
 
@@ -135,7 +126,7 @@ function saveCachedPrices(prices) {
 export function applyManualPrices(base, manual) {
   if (!manual) return base;
   const next = { ...base, assets: { ...base.assets } };
-  for (const key of ['gold', 'silver', 'usd']) {
+  for (const key of ['gold', 'silver', 'usd', 'xau']) {
     const value = toNumber(manual[key]);
     if (value != null && value > 0) {
       next.assets[key] = {
@@ -151,10 +142,14 @@ export function applyManualPrices(base, manual) {
   return next;
 }
 
+function pickAsset(primary, fallback) {
+  return primary?.price != null ? primary : fallback;
+}
+
 export async function fetchLivePrices(settings = {}) {
   const silverPurity = settings.silverPurity === '925' ? '925' : '999';
   const errors = [];
-  let assets = { gold: null, silver: null, usd: null };
+  let assets = { gold: null, silver: null, usd: null, xau: null };
   let attribution = null;
 
   try {
@@ -164,14 +159,20 @@ export async function fetchLivePrices(settings = {}) {
     errors.push(`popular.json: ${err.message}`);
   }
 
-  if (!assets.gold?.price || !assets.usd?.price || !assets.silver?.price) {
+  if (
+    !assets.gold?.price ||
+    !assets.usd?.price ||
+    !assets.silver?.price ||
+    !assets.xau?.price
+  ) {
     try {
       const latest = await fetchJson(IRAN_MARKET_LATEST_URL);
       const fromLatest = extractFromIranMarket(latest, silverPurity);
       assets = {
-        gold: assets.gold?.price != null ? assets.gold : fromLatest.gold,
-        silver: assets.silver?.price != null ? assets.silver : fromLatest.silver,
-        usd: assets.usd?.price != null ? assets.usd : fromLatest.usd,
+        gold: pickAsset(assets.gold, fromLatest.gold),
+        silver: pickAsset(assets.silver, fromLatest.silver),
+        usd: pickAsset(assets.usd, fromLatest.usd),
+        xau: pickAsset(assets.xau, fromLatest.xau),
       };
     } catch (err) {
       errors.push(`latest-toman: ${err.message}`);
@@ -193,7 +194,8 @@ export async function fetchLivePrices(settings = {}) {
   const hasAny =
     (assets.gold && assets.gold.price != null) ||
     (assets.silver && assets.silver.price != null) ||
-    (assets.usd && assets.usd.price != null);
+    (assets.usd && assets.usd.price != null) ||
+    (assets.xau && assets.xau.price != null);
 
   if (!hasAny) {
     const cached = loadCachedPrices();
@@ -225,7 +227,7 @@ export function getEffectivePrices(liveOrCached, settings = {}) {
   const base =
     liveOrCached ||
     loadCachedPrices() || {
-      assets: { gold: null, silver: null, usd: null },
+      assets: { gold: null, silver: null, usd: null, xau: null },
       fetchedAt: null,
       stale: true,
       error: null,

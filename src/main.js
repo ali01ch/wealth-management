@@ -5,6 +5,7 @@ import { dateFa } from './format.js';
 import { renderDashboard } from './ui/dashboard.js';
 import { renderPurchases } from './ui/purchases.js';
 import { renderPrices } from './ui/pricesView.js';
+import { renderGoldSignal } from './ui/goldSignal.js';
 import { renderGoals } from './ui/goals.js';
 import { renderSettings } from './ui/settings.js';
 
@@ -44,6 +45,9 @@ function render() {
       break;
     case 'prices':
       renderPrices(view, ctx);
+      break;
+    case 'signal':
+      renderGoldSignal(view, ctx);
       break;
     case 'goals':
       renderGoals(view, ctx);

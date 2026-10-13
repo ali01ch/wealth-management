@@ -327,8 +327,8 @@ body {
   height: calc(var(--tab-h) + var(--safe-bottom));
   padding: 8px 8px calc(8px + var(--safe-bottom));
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
   background: rgba(15, 20, 25, 0.92);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
@@ -341,11 +341,37 @@ body {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   border-radius: 12px;
-  padding: 8px 4px;
+  padding: 8px 2px;
   cursor: pointer;
+}
+
+.signal-hero.signal-buy {
+  border-color: rgba(62, 207, 142, 0.45);
+  background: linear-gradient(160deg, rgba(62, 207, 142, 0.16), var(--bg-card));
+}
+
+.signal-hero.signal-neutral {
+  border-color: rgba(212, 160, 23, 0.4);
+  background: linear-gradient(160deg, rgba(212, 160, 23, 0.12), var(--bg-card));
+}
+
+.signal-hero.signal-avoid {
+  border-color: rgba(255, 107, 107, 0.45);
+  background: linear-gradient(160deg, rgba(255, 107, 107, 0.14), var(--bg-card));
+}
+
+.signal-verdict {
+  margin-bottom: 8px;
+}
+
+.signal-advice {
+  margin: 0 0 12px;
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 0.92rem;
 }
 
 .tab.active {

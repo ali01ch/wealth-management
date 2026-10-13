@@ -31,6 +31,10 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
           <label for="manualUsd">دلار — تومان</label>
           <input id="manualUsd" name="manualUsd" type="number" inputmode="decimal" min="0" value="${s.manualPrices?.usd ?? ''}" placeholder="خالی = قیمت آنلاین" />
         </div>
+        <div class="field">
+          <label for="manualXau">انس جهانی طلا — دلار</label>
+          <input id="manualXau" name="manualXau" type="number" inputmode="decimal" min="0" step="any" value="${s.manualPrices?.xau ?? ''}" placeholder="خالی = قیمت آنلاین" />
+        </div>
         <button type="submit" class="btn btn-block">ذخیره تنظیمات</button>
         <button type="button" class="btn btn-secondary btn-block" id="clear-manual">پاک کردن قیمت دستی</button>
       </form>
@@ -61,6 +65,7 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
       gold: fd.get('manualGold') ? Number(fd.get('manualGold')) : null,
       silver: fd.get('manualSilver') ? Number(fd.get('manualSilver')) : null,
       usd: fd.get('manualUsd') ? Number(fd.get('manualUsd')) : null,
+      xau: fd.get('manualXau') ? Number(fd.get('manualXau')) : null,
     };
     const hasManual = Object.values(manual).some((v) => v != null && v > 0);
     const next = {

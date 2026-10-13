@@ -4,6 +4,57 @@ export const ASSET_META = {
   usd: { label: 'دلار', unit: 'دلار', priceKey: 'usd' },
 };
 
+/** گرم در یک انس تروی */
+export const TROY_OUNCE_GRAMS = 31.1034768;
+
+/**
+ * مقایسه قیمت داخلی طلای ۱۸ عیار با ارزش منصفانه از انس جهانی × دلار آزاد.
+ * حباب مثبت = داخلی گران‌تر از ارزش جهانی.
+ */
+export function analyzeGoldBuySignal(prices) {
+  const xau = Number(prices?.assets?.xau?.price);
+  const usd = Number(prices?.assets?.usd?.price);
+  const local18 = Number(prices?.assets?.gold?.price);
+
+  if (!(xau > 0 && usd > 0 && local18 > 0)) return null;
+
+  const fair24 = (xau / TROY_OUNCE_GRAMS) * usd;
+  const fair18 = fair24 * (18 / 24);
+  const diff = local18 - fair18;
+  const premiumPct = (diff / fair18) * 100;
+
+  let verdict;
+  let verdictClass;
+  let advice;
+
+  if (premiumPct <= -1) {
+    verdict = 'الان بخر';
+    verdictClass = 'signal-buy';
+    advice = 'قیمت داخلی از ارزش جهانی پایین‌تر است؛ خرید نسبتاً مناسب به‌نظر می‌رسد.';
+  } else if (premiumPct <= 2) {
+    verdict = 'فرقی ندارد';
+    verdictClass = 'signal-neutral';
+    advice = 'قیمت داخلی نزدیک به ارزش منصفانهٔ انس × دلار است.';
+  } else {
+    verdict = 'فعلاً نخر';
+    verdictClass = 'signal-avoid';
+    advice = 'طلای داخلی نسبت به انس جهانی گران‌تر است (حباب مثبت).';
+  }
+
+  return {
+    xau,
+    usd,
+    local18,
+    fair18,
+    fair24,
+    diff,
+    premiumPct,
+    verdict,
+    verdictClass,
+    advice,
+  };
+}
+
 export function summarizeHoldings(purchases) {
   const summary = {
     gold: { qty: 0, cost: 0 },

@@ -1,5 +1,6 @@
 import { portfolioValue } from '../calc.js';
 import { dateFa, number, percent, pnlClass, toman } from '../format.js';
+import { goldSignalSummaryHtml } from './goldSignal.js';
 
 export function renderDashboard(root, { state, prices }) {
   const portfolio = portfolioValue(state.purchases, prices);
@@ -7,6 +8,8 @@ export function renderDashboard(root, { state, prices }) {
 
   root.innerHTML = `
     ${prices?.error || prices?.stale ? `<div class="alert">${prices.stale ? 'قیمت‌ها ممکن است قدیمی باشند. ' : ''}${prices.error || ''}</div>` : ''}
+
+    ${goldSignalSummaryHtml(prices)}
 
     <section class="card">
       <div class="label">ارزش کل دارایی‌ها</div>
