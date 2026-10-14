@@ -2,6 +2,7 @@ import { ASSET_META, summarizeHoldings } from '../calc.js';
 import { escapeHtml } from '../escape.js';
 import { number, toman } from '../format.js';
 import { formatJalaliLong, todayGregorianIso } from '../jalali.js';
+import { enhanceMoneyInputs, formatMoneyInput, parseMoneyInput } from '../moneyInput.js';
 import { createId } from '../storage.js';
 import { mountJalaliDatePicker } from './jalaliDatePicker.js';
 
@@ -25,11 +26,11 @@ function purchaseFormHtml(purchase = null) {
       </div>
       <div class="field">
         <label for="quantity">مقدار</label>
-        <input id="quantity" name="quantity" type="number" inputmode="decimal" step="any" min="0" required value="${p.quantity}" />
+        <input id="quantity" name="quantity" type="text" inputmode="decimal" required value="${escapeHtml(p.quantity === '' || p.quantity == null ? '' : formatMoneyInput(p.quantity))}" data-money />
       </div>
       <div class="field">
         <label for="unitPrice">قیمت خرید هر واحد (تومان)</label>
-        <input id="unitPrice" name="unitPrice" type="number" inputmode="decimal" step="any" min="0" required value="${p.unitPrice}" />
+        <input id="unitPrice" name="unitPrice" type="text" inputmode="decimal" required value="${escapeHtml(p.unitPrice === '' || p.unitPrice == null ? '' : formatMoneyInput(p.unitPrice))}" data-money />
       </div>
       <div class="field">
         <label for="date">تاریخ خرید (شمسی)</label>
@@ -117,6 +118,7 @@ export function renderPurchases(root, { state, onChange }) {
       purchaseFormHtml(purchase),
     );
     const form = backdrop.querySelector('#purchase-form');
+    enhanceMoneyInputs(form);
     const dateInput = form.querySelector('#date');
     mountJalaliDatePicker(dateInput, {
       initialIso: purchase?.date || todayGregorianIso(),
@@ -128,8 +130,8 @@ export function renderPurchases(root, { state, onChange }) {
       const next = {
         id: purchase?.id || createId(),
         asset: String(fd.get('asset')),
-        quantity: Number(fd.get('quantity')),
-        unitPrice: Number(fd.get('unitPrice')),
+        quantity: parseMoneyInput(fd.get('quantity')) ?? 0,
+        unitPrice: parseMoneyInput(fd.get('unitPrice')) ?? 0,
         date: String(fd.get('date') || dateInput.dataset.iso || todayGregorianIso()),
         note: String(fd.get('note') || '').trim(),
       };

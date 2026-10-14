@@ -19,7 +19,7 @@ const refreshBtn = document.getElementById('refresh-prices');
 
 let state = loadState();
 let prices = getEffectivePrices(loadCachedPrices(), state.settings);
-let currentTab = 'dashboard';
+let currentTab = 'prices';
 let refreshTimer = null;
 let fetching = false;
 

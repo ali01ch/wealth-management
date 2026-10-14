@@ -1,7 +1,9 @@
+import { enhanceMoneyInputs, formatMoneyInput, parseMoneyInput } from '../moneyInput.js';
 import { clearState, exportState, importState } from '../storage.js';
 
 export function renderSettings(root, { state, onChange, onRefreshPrices }) {
   const s = state.settings;
+  const moneyVal = (v) => (v == null || v === '' ? '' : formatMoneyInput(v));
 
   root.innerHTML = `
     <section class="card">
@@ -21,19 +23,19 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
         <h3>قیمت دستی (اختیاری، برای آفلاین)</h3>
         <div class="field">
           <label for="manualGold">طلا ۱۸ عیار — تومان / گرم</label>
-          <input id="manualGold" name="manualGold" type="number" inputmode="decimal" min="0" value="${s.manualPrices?.gold ?? ''}" placeholder="خالی = قیمت آنلاین" />
+          <input id="manualGold" name="manualGold" type="text" inputmode="decimal" value="${moneyVal(s.manualPrices?.gold)}" placeholder="خالی = قیمت آنلاین" data-money />
         </div>
         <div class="field">
           <label for="manualSilver">نقره — تومان / گرم</label>
-          <input id="manualSilver" name="manualSilver" type="number" inputmode="decimal" min="0" value="${s.manualPrices?.silver ?? ''}" placeholder="خالی = قیمت آنلاین" />
+          <input id="manualSilver" name="manualSilver" type="text" inputmode="decimal" value="${moneyVal(s.manualPrices?.silver)}" placeholder="خالی = قیمت آنلاین" data-money />
         </div>
         <div class="field">
           <label for="manualUsd">دلار — تومان</label>
-          <input id="manualUsd" name="manualUsd" type="number" inputmode="decimal" min="0" value="${s.manualPrices?.usd ?? ''}" placeholder="خالی = قیمت آنلاین" />
+          <input id="manualUsd" name="manualUsd" type="text" inputmode="decimal" value="${moneyVal(s.manualPrices?.usd)}" placeholder="خالی = قیمت آنلاین" data-money />
         </div>
         <div class="field">
           <label for="manualXau">انس جهانی طلا — دلار</label>
-          <input id="manualXau" name="manualXau" type="number" inputmode="decimal" min="0" step="any" value="${s.manualPrices?.xau ?? ''}" placeholder="خالی = قیمت آنلاین" />
+          <input id="manualXau" name="manualXau" type="text" inputmode="decimal" value="${moneyVal(s.manualPrices?.xau)}" placeholder="خالی = قیمت آنلاین" data-money />
         </div>
         <button type="submit" class="btn btn-block">ذخیره تنظیمات</button>
         <button type="button" class="btn btn-secondary btn-block" id="clear-manual">پاک کردن قیمت دستی</button>
@@ -58,14 +60,16 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
     </section>
   `;
 
+  enhanceMoneyInputs(root.querySelector('#settings-form'));
+
   root.querySelector('#settings-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const manual = {
-      gold: fd.get('manualGold') ? Number(fd.get('manualGold')) : null,
-      silver: fd.get('manualSilver') ? Number(fd.get('manualSilver')) : null,
-      usd: fd.get('manualUsd') ? Number(fd.get('manualUsd')) : null,
-      xau: fd.get('manualXau') ? Number(fd.get('manualXau')) : null,
+      gold: parseMoneyInput(fd.get('manualGold')),
+      silver: parseMoneyInput(fd.get('manualSilver')),
+      usd: parseMoneyInput(fd.get('manualUsd')),
+      xau: parseMoneyInput(fd.get('manualXau')),
     };
     const hasManual = Object.values(manual).some((v) => v != null && v > 0);
     const next = {

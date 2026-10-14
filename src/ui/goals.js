@@ -1,6 +1,7 @@
 import { analyzeGoal, formatMonths, portfolioValue } from '../calc.js';
 import { escapeHtml } from '../escape.js';
 import { number, toman } from '../format.js';
+import { enhanceMoneyInputs, formatMoneyInput, parseMoneyInput } from '../moneyInput.js';
 import { createId } from '../storage.js';
 
 function goalFormHtml(goal = null) {
@@ -17,11 +18,11 @@ function goalFormHtml(goal = null) {
       </div>
       <div class="field">
         <label for="targetToman">مبلغ هدف (تومان)</label>
-        <input id="targetToman" name="targetToman" type="number" inputmode="decimal" min="0" required value="${g.targetToman || ''}" />
+        <input id="targetToman" name="targetToman" type="text" inputmode="decimal" required value="${escapeHtml(g.targetToman ? formatMoneyInput(g.targetToman) : '')}" data-money="int" />
       </div>
       <div class="field">
         <label for="monthlySavings">پس‌انداز ماهانه (تومان، اختیاری)</label>
-        <input id="monthlySavings" name="monthlySavings" type="number" inputmode="decimal" min="0" value="${g.monthlySavings || ''}" placeholder="برای تخمین زمان" />
+        <input id="monthlySavings" name="monthlySavings" type="text" inputmode="decimal" value="${escapeHtml(g.monthlySavings ? formatMoneyInput(g.monthlySavings) : '')}" placeholder="برای تخمین زمان" data-money="int" />
       </div>
       <button type="submit" class="btn btn-block">${goal ? 'ذخیره تغییرات' : 'افزودن هدف'}</button>
       <button type="button" class="btn btn-secondary btn-block" data-close-modal>انصراف</button>
@@ -105,14 +106,15 @@ export function renderGoals(root, { state, prices, onChange }) {
   const openEditor = (goal = null) => {
     const { backdrop, close } = openModal(goal ? 'ویرایش هدف' : 'هدف جدید', goalFormHtml(goal));
     const form = backdrop.querySelector('#goal-form');
+    enhanceMoneyInputs(form);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const next = {
         id: goal?.id || createId(),
         title: String(fd.get('title') || '').trim(),
-        targetToman: Number(fd.get('targetToman')),
-        monthlySavings: Number(fd.get('monthlySavings') || 0),
+        targetToman: parseMoneyInput(fd.get('targetToman')) ?? 0,
+        monthlySavings: parseMoneyInput(fd.get('monthlySavings')) ?? 0,
       };
       if (!next.title || !(next.targetToman > 0)) return;
       if (goal) {
