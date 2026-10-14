@@ -2,9 +2,8 @@
 
 وب‌اپ موبایل‌فرست و کاملاً سمت‌کلاینت برای پیگیری موجودی طلای ۱۸ عیار، نقره و دلار با قیمت روز بازار ایران، محاسبه ارزش پرتفوی و فاصله تا اهداف مالی (مثل خرید خانه).
 
-**ریپو:** [github.com/ali01ch/wealth-management](https://github.com/ali01ch/wealth-management) (خصوصی)
-
-> برای GitHub Pages روی پلن رایگان، ریپو باید عمومی باشد. ورک‌فلو deploy در `.github/workflows/deploy-pages.yml` آماده است؛ بعد از public کردن، در Settings → Pages منبع را روی GitHub Actions بگذارید.
+**ریپو:** [github.com/ali01ch/wealth-management](https://github.com/ali01ch/wealth-management)  
+**نسخه آنلاین (GitHub Pages):** [ali01ch.github.io/wealth-management](https://ali01ch.github.io/wealth-management/)
 
 ## امکانات
 
