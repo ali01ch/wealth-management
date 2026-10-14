@@ -1,22 +1,16 @@
 import { ASSET_META, summarizeHoldings } from '../calc.js';
 import { escapeHtml } from '../escape.js';
-import { dateFa, number, toman } from '../format.js';
+import { number, toman } from '../format.js';
+import { formatJalaliLong, todayGregorianIso } from '../jalali.js';
 import { createId } from '../storage.js';
-
-function todayInputValue() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
+import { mountJalaliDatePicker } from './jalaliDatePicker.js';
 
 function purchaseFormHtml(purchase = null) {
   const p = purchase || {
     asset: 'gold',
     quantity: '',
     unitPrice: '',
-    date: todayInputValue(),
+    date: todayGregorianIso(),
     note: '',
   };
   return `
@@ -38,8 +32,8 @@ function purchaseFormHtml(purchase = null) {
         <input id="unitPrice" name="unitPrice" type="number" inputmode="decimal" step="any" min="0" required value="${p.unitPrice}" />
       </div>
       <div class="field">
-        <label for="date">تاریخ خرید</label>
-        <input id="date" name="date" type="date" required value="${p.date || todayInputValue()}" />
+        <label for="date">تاریخ خرید (شمسی)</label>
+        <input id="date" name="date" type="text" required value="${escapeHtml(p.date || todayGregorianIso())}" />
       </div>
       <div class="field">
         <label for="note">یادداشت (اختیاری)</label>
@@ -91,7 +85,7 @@ export function renderPurchases(root, { state, onChange }) {
                 <article class="list-item" data-id="${p.id}">
                   <div class="list-item-header">
                     <div>
-                      <span class="badge">${meta.label}</span>
+                      <span class="badge badge-${p.asset}">${meta.label}</span>
                       <div class="value" style="margin-top:8px;text-align:right">
                         ${number(p.quantity)} ${meta.unit}
                       </div>
@@ -99,7 +93,7 @@ export function renderPurchases(root, { state, onChange }) {
                     <div class="value">${toman(cost)}</div>
                   </div>
                   <div class="muted">قیمت واحد: ${toman(p.unitPrice)}</div>
-                  <div class="muted">تاریخ: ${dateFa(p.date)}</div>
+                  <div class="muted">تاریخ: ${formatJalaliLong(p.date)}</div>
                   ${p.note ? `<div class="muted">${escapeHtml(p.note)}</div>` : ''}
                   <div class="list-item-actions">
                     <button type="button" class="btn btn-secondary btn-sm" data-edit="${p.id}">ویرایش</button>
@@ -123,6 +117,11 @@ export function renderPurchases(root, { state, onChange }) {
       purchaseFormHtml(purchase),
     );
     const form = backdrop.querySelector('#purchase-form');
+    const dateInput = form.querySelector('#date');
+    mountJalaliDatePicker(dateInput, {
+      initialIso: purchase?.date || todayGregorianIso(),
+    });
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(form);
@@ -131,7 +130,7 @@ export function renderPurchases(root, { state, onChange }) {
         asset: String(fd.get('asset')),
         quantity: Number(fd.get('quantity')),
         unitPrice: Number(fd.get('unitPrice')),
-        date: String(fd.get('date')),
+        date: String(fd.get('date') || dateInput.dataset.iso || todayGregorianIso()),
         note: String(fd.get('note') || '').trim(),
       };
       if (!(next.quantity > 0) || !(next.unitPrice >= 0)) return;

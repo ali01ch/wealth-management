@@ -29,9 +29,10 @@ export function percent(value) {
 export function dateFa(iso) {
   if (!iso) return '—';
   try {
-    return new Intl.DateTimeFormat('fa-IR', {
+    const hasTime = /T|\d{2}:\d{2}/.test(String(iso));
+    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
       dateStyle: 'medium',
-      timeStyle: 'short',
+      ...(hasTime ? { timeStyle: 'short' } : {}),
     }).format(new Date(iso));
   } catch {
     return String(iso);

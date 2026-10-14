@@ -4,8 +4,8 @@
   "description": "پیگیری ارزش طلا، نقره و دلار با قیمت روز بازار ایران",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0f1419",
-  "theme_color": "#0f1419",
+  "background_color": "#14110e",
+  "theme_color": "#14110e",
   "lang": "fa",
   "dir": "rtl",
   "icons": [

@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="/'1'лл EF">
-  <rect width="128" height="128" rx="28" fill="#0f1419"/>
-  <circle cx="64" cy="58" r="28" fill="#d4a017"/>
-  <circle cx="64" cy="58" r="18" fill="#f0c24b"/>
-  <rect x="38" y="88" width="52" height="10" rx="5" fill="#8b9bb4"/>
-  <rect x="46" y="100" width="36" height="8" rx="4" fill="#5c6b82"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="?????? ??">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8c45a"/>
+      <stop offset="100%" stop-color="#c9a227"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#14110e"/>
+  <circle cx="64" cy="56" r="30" fill="url(#g)"/>
+  <circle cx="64" cy="56" r="18" fill="#f3ebe0" opacity="0.92"/>
+  <rect x="36" y="90" width="56" height="9" rx="4.5" fill="#b7c0cc"/>
+  <rect x="44" y="102" width="40" height="7" rx="3.5" fill="#6f9e7a"/>
 </svg>
