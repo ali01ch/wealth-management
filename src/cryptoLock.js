@@ -1,7 +1,7 @@
 /**
  * قفل اختیاری با PIN + رمزنگاری AES-GCM.
- * اثر انگشت (WebAuthn) فقط برای باز کردن UI در همان نشست،
- * پس از یک‌بار ورود موفق با PIN در آن تب.
+ * اگر اثر انگشت فعال باشد، ورود فقط با بیومتریک است (کلید باز کردن روی دستگاه ذخیره می‌شود).
+ * PIN برای فعال/خاموش کردن قفل و مدیریت امنیت در تنظیمات است.
  */
 
 export const LOCK_META_KEY = 'wealth-lock-v1';
@@ -234,13 +234,21 @@ export async function changePin(oldPin, newPin) {
   const meta = loadLockMeta();
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
-  saveLockMeta({
+  const nextMeta = {
     ...meta,
     enabled: true,
     salt: bufToB64(salt),
     verifier,
     iterations: ITERATIONS,
-  });
+  };
+  if (meta.biometric?.credentialId) {
+    const raw = await exportRawKey(nextDek);
+    nextMeta.biometric = {
+      ...meta.biometric,
+      bioDek: bufToB64(raw),
+    };
+  }
+  saveLockMeta(nextMeta);
   rememberSessionDek(nextDek);
 }
 
@@ -330,14 +338,26 @@ export async function registerBiometric() {
 
   if (!cred) throw new Error('ثبت اثر انگشت لغو شد');
   const id = bufToB64(cred.rawId);
+  const rawDek = await exportRawKey(memoryDek);
   saveLockMeta({
     ...meta,
     biometric: {
       credentialId: id,
+      bioDek: bufToB64(rawDek),
       registeredAt: new Date().toISOString(),
     },
   });
   return true;
+}
+
+export function isBiometricUnlockReady() {
+  const meta = loadLockMeta();
+  return Boolean(
+    meta.enabled &&
+      meta.biometric?.credentialId &&
+      meta.biometric?.bioDek &&
+      biometricSupported(),
+  );
 }
 
 export async function clearBiometric() {
@@ -350,9 +370,8 @@ export async function unlockWithBiometric() {
   if (!meta.enabled || !meta.biometric?.credentialId) {
     throw new Error('اثر انگشت فعال نیست');
   }
-  const restored = await restoreSessionDek();
-  if (!restored) {
-    throw new Error('برای اولین ورود این نشست، ابتدا PIN را وارد کنید');
+  if (!meta.biometric.bioDek) {
+    throw new Error('اثر انگشت ناقص است؛ از تنظیمات دوباره فعالش کنید');
   }
 
   const challenge = crypto.getRandomValues(new Uint8Array(32));
@@ -373,5 +392,12 @@ export async function unlockWithBiometric() {
   if (!assertion) {
     throw new Error('احراز هویت لغو شد');
   }
-  return memoryDek;
+
+  const dek = await importRawKey(b64ToBuf(meta.biometric.bioDek));
+  const verifier = await makeVerifier(dek);
+  if (verifier !== meta.verifier) {
+    throw new Error('کلید اثر انگشت منقضی شده؛ دوباره از تنظیمات فعال کنید');
+  }
+  rememberSessionDek(dek);
+  return dek;
 }

@@ -31,8 +31,8 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
     <section class="card">
       <h2>امنیت</h2>
       <p class="muted" style="margin-top:0;line-height:1.7">
-        قفل اختیاری است. با فعال‌سازی، دادهٔ دارایی با PIN رمزنگاری می‌شود.
-        اثر انگشت فقط میانبر ورود در همان نشست است (پس از یک‌بار PIN).
+        قفل اختیاری است. داده با PIN رمزنگاری می‌شود.
+        اگر اثر انگشت فعال باشد، ورود فقط با همان است؛ PIN برای مدیریت قفل در تنظیمات می‌ماند.
       </p>
       ${
         lockOn
@@ -194,9 +194,16 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
   });
 
   root.querySelector('#enable-bio')?.addEventListener('click', async () => {
+    if (
+      !confirm(
+        'پس از فعال‌سازی، ورود به برنامه فقط با اثر انگشت / Face ID خواهد بود. ادامه می‌دهید؟',
+      )
+    ) {
+      return;
+    }
     try {
       await registerBiometric();
-      alert('اثر انگشت فعال شد');
+      alert('اثر انگشت فعال شد. از این به بعد فقط با همان وارد می‌شوید.');
       onChange(state);
     } catch (err) {
       alert(err.message || 'ثبت اثر انگشت ناموفق بود');
