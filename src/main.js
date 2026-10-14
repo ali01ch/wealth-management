@@ -3,7 +3,12 @@ import '@fontsource/vazirmatn/arabic-500.css';
 import '@fontsource/vazirmatn/arabic-600.css';
 import '@fontsource/vazirmatn/arabic-700.css';
 import './styles.css';
-import { loadState, saveState } from './storage.js';
+import {
+  isLockEnabled,
+  loadLockMeta,
+  restoreSessionDek,
+} from './cryptoLock.js';
+import { loadStateAsync, saveState } from './storage.js';
 import { fetchLivePrices, getEffectivePrices, loadCachedPrices } from './prices.js';
 import { dateFa } from './format.js';
 import { renderDashboard } from './ui/dashboard.js';
@@ -12,33 +17,39 @@ import { renderPrices } from './ui/pricesView.js';
 import { renderGoldSignal } from './ui/goldSignal.js';
 import { renderGoals } from './ui/goals.js';
 import { renderSettings } from './ui/settings.js';
+import { showLockScreen } from './ui/lockScreen.js';
 import { applyTheme, watchSystemTheme } from './theme.js';
 
 const view = document.getElementById('view');
 const priceStatus = document.getElementById('price-status');
 const refreshBtn = document.getElementById('refresh-prices');
 
-let state = loadState();
-let prices = getEffectivePrices(loadCachedPrices(), state.settings);
+let state = null;
+let prices = null;
 let currentTab = 'prices';
 let refreshTimer = null;
 let fetching = false;
-
-applyTheme(state.settings.theme);
+let booted = false;
 
 function setStatus(text) {
   if (priceStatus) priceStatus.textContent = text;
 }
 
-function persist(nextState) {
+async function persist(nextState) {
   state = nextState;
-  saveState(state);
+  try {
+    await saveState(state);
+  } catch (err) {
+    alert(err.message || 'ذخیره ناموفق بود');
+    return;
+  }
   applyTheme(state.settings.theme);
   scheduleRefresh();
   render();
 }
 
 function render() {
+  if (!booted || !state) return;
   const ctx = {
     state,
     prices,
@@ -69,7 +80,7 @@ function render() {
 }
 
 async function refreshPrices(manual = false) {
-  if (fetching) return;
+  if (!booted || !state || fetching) return;
   fetching = true;
   if (manual) setStatus('در حال به‌روزرسانی…');
   refreshBtn?.classList.add('spinning');
@@ -91,12 +102,14 @@ async function refreshPrices(manual = false) {
 
 function scheduleRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
+  if (!state) return;
   const minutes = Math.max(1, Number(state.settings.refreshMinutes) || 5);
   refreshTimer = setInterval(() => refreshPrices(false), minutes * 60 * 1000);
 }
 
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
+    if (!booted) return;
     document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
@@ -107,14 +120,39 @@ document.querySelectorAll('.tab').forEach((tab) => {
 refreshBtn?.addEventListener('click', () => refreshPrices(true));
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') refreshPrices(false);
+  if (document.visibilityState === 'visible' && booted) refreshPrices(false);
 });
 
-watchSystemTheme(
-  () => state.settings.theme,
-  () => applyTheme(state.settings.theme),
-);
+async function boot() {
+  document.body.classList.add('boot-pending');
 
-render();
-scheduleRefresh();
-refreshPrices(false);
+  const meta = loadLockMeta();
+  if (meta.uiTheme) applyTheme(meta.uiTheme);
+
+  if (isLockEnabled()) {
+    await restoreSessionDek();
+    await showLockScreen();
+  }
+
+  try {
+    state = await loadStateAsync();
+  } catch (err) {
+    alert(err.message || 'بارگذاری داده ناموفق بود');
+    return;
+  }
+
+  prices = getEffectivePrices(loadCachedPrices(), state.settings);
+  applyTheme(state.settings.theme);
+  watchSystemTheme(
+    () => state.settings.theme,
+    () => applyTheme(state.settings.theme),
+  );
+
+  booted = true;
+  document.body.classList.remove('boot-pending');
+  render();
+  scheduleRefresh();
+  refreshPrices(false);
+}
+
+boot();

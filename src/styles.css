@@ -689,6 +689,34 @@ body {
   border-color: rgba(201, 162, 39, 0.45);
 }
 
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  background: var(--overlay);
+  backdrop-filter: blur(10px);
+}
+
+.lock-card {
+  width: min(400px, 100%);
+  margin: 0;
+}
+
+.lock-card h2 {
+  margin-top: 0;
+}
+
+.lock-card input[type='password'] {
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  text-align: center;
+}
+
 .jalali-sheet-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

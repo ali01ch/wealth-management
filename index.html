@@ -17,11 +17,20 @@
     <script>
       (function () {
         try {
-          var raw = localStorage.getItem('wealth-management-v1');
           var pref = 'auto';
-          if (raw) {
-            var parsed = JSON.parse(raw);
-            if (parsed && parsed.settings && parsed.settings.theme) pref = parsed.settings.theme;
+          var lockRaw = localStorage.getItem('wealth-lock-v1');
+          if (lockRaw) {
+            var lock = JSON.parse(lockRaw);
+            if (lock && lock.uiTheme) pref = lock.uiTheme;
+          }
+          if (pref === 'auto') {
+            var raw = localStorage.getItem('wealth-management-v1');
+            if (raw) {
+              var parsed = JSON.parse(raw);
+              if (parsed && !parsed.enc && parsed.settings && parsed.settings.theme) {
+                pref = parsed.settings.theme;
+              }
+            }
           }
           var dark =
             pref === 'dark' ||
@@ -35,6 +44,10 @@
         }
       })();
     </script>
+    <style>
+      body.boot-pending #app,
+      body.app-locked #app { visibility: hidden; }
+    </style>
   </head>
   <body>
     <div id="app">
