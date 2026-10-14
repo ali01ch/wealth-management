@@ -20,8 +20,8 @@
   --radius: 16px;
   --tab-h: 64px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --font-ui: 'Estedad', 'Vazirmatn', Tahoma, sans-serif;
-  --font-display: 'Noto Naskh Arabic', 'Estedad', serif;
+  --font-ui: 'Vazirmatn', Tahoma, sans-serif;
+  --font-display: 'Vazirmatn', Tahoma, sans-serif;
   font-family: var(--font-ui);
 }
 

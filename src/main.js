@@ -1,3 +1,7 @@
+import '@fontsource/vazirmatn/arabic-400.css';
+import '@fontsource/vazirmatn/arabic-500.css';
+import '@fontsource/vazirmatn/arabic-600.css';
+import '@fontsource/vazirmatn/arabic-700.css';
 import './styles.css';
 import { loadState, saveState } from './storage.js';
 import { fetchLivePrices, getEffectivePrices, loadCachedPrices } from './prices.js';
