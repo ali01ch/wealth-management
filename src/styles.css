@@ -385,6 +385,16 @@ body {
   color: var(--cash);
 }
 
+.badge-kind-buy {
+  background: var(--cash-soft);
+  color: var(--cash);
+}
+
+.badge-kind-sell {
+  background: rgba(217, 120, 104, 0.14);
+  color: var(--negative);
+}
+
 .progress {
   height: 8px;
   background: var(--bg-elevated);

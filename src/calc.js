@@ -55,44 +55,144 @@ export function analyzeGoldBuySignal(prices) {
   };
 }
 
-export function summarizeHoldings(purchases) {
-  const summary = {
-    gold: { qty: 0, cost: 0 },
-    silver: { qty: 0, cost: 0 },
-    usd: { qty: 0, cost: 0 },
+export function normalizeTx(tx) {
+  if (!tx || typeof tx !== 'object') return null;
+  return {
+    ...tx,
+    kind: tx.kind === 'sell' ? 'sell' : 'buy',
+    asset: tx.asset,
+    quantity: Number(tx.quantity) || 0,
+    unitPrice: Number(tx.unitPrice) || 0,
   };
+}
 
-  for (const p of purchases) {
-    const type = p.asset;
-    if (!summary[type]) continue;
-    const qty = Number(p.quantity) || 0;
-    const unitPrice = Number(p.unitPrice) || 0;
-    summary[type].qty += qty;
-    summary[type].cost += qty * unitPrice;
+/** ترتیب زمانی برای دفتر کل: تاریخ، بعد خرید قبل فروش در همان روز */
+export function sortTransactionsChronological(transactions) {
+  return [...transactions]
+    .map(normalizeTx)
+    .filter(Boolean)
+    .sort((a, b) => {
+      const byDate = String(a.date || '').localeCompare(String(b.date || ''));
+      if (byDate !== 0) return byDate;
+      const ka = a.kind === 'sell' ? 1 : 0;
+      const kb = b.kind === 'sell' ? 1 : 0;
+      if (ka !== kb) return ka - kb;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+}
+
+function emptyBook() {
+  return {
+    gold: { qty: 0, cost: 0, realized: 0 },
+    silver: { qty: 0, cost: 0, realized: 0 },
+    usd: { qty: 0, cost: 0, realized: 0 },
+  };
+}
+
+/**
+ * اجرای دفتر کل با میانگین بهای تمام‌شده (average cost).
+ * فروش: کم شدن موجودی و هزینهٔ باقی‌مانده، ثبت سود/زیان تحقق‌یافته.
+ */
+export function runLedger(transactions) {
+  const book = emptyBook();
+  const ordered = sortTransactionsChronological(transactions);
+
+  for (const tx of ordered) {
+    const row = book[tx.asset];
+    if (!row) continue;
+    const qty = tx.quantity;
+    const price = tx.unitPrice;
+    if (!(qty > 0) || !(price >= 0)) {
+      return {
+        ok: false,
+        error: 'مقدار و قیمت باید معتبر باشند.',
+        book: null,
+      };
+    }
+
+    if (tx.kind === 'buy') {
+      row.qty += qty;
+      row.cost += qty * price;
+      continue;
+    }
+
+    // sell
+    if (qty > row.qty + 1e-9) {
+      const meta = ASSET_META[tx.asset];
+      return {
+        ok: false,
+        error: `موجودی ${meta?.label || tx.asset} کافی نیست (درخواستی: ${qty}، موجود: ${row.qty}).`,
+        book: null,
+      };
+    }
+
+    const avgCost = row.qty > 0 ? row.cost / row.qty : 0;
+    const costBasis = avgCost * qty;
+    const proceeds = qty * price;
+    row.realized += proceeds - costBasis;
+    row.qty -= qty;
+    row.cost -= costBasis;
+
+    if (row.qty < 1e-9) {
+      row.qty = 0;
+      row.cost = 0;
+    }
+  }
+
+  return { ok: true, error: null, book };
+}
+
+export function summarizeHoldings(transactions) {
+  const { ok, book } = runLedger(transactions);
+  const summary = emptyBook();
+
+  if (!ok || !book) {
+    for (const key of Object.keys(summary)) {
+      summary[key].avgCost = 0;
+    }
+    return summary;
   }
 
   for (const key of Object.keys(summary)) {
-    const item = summary[key];
-    item.avgCost = item.qty > 0 ? item.cost / item.qty : 0;
+    const item = book[key];
+    summary[key] = {
+      qty: item.qty,
+      cost: item.cost,
+      realized: item.realized,
+      avgCost: item.qty > 0 ? item.cost / item.qty : 0,
+    };
   }
-
   return summary;
+}
+
+/** موجودی قابل فروش قبل از اعمال یک تراکنش (مثلاً هنگام ویرایش) */
+export function availableQuantity(transactions, asset, excludeId = null) {
+  const filtered = transactions.filter((t) => t.id !== excludeId);
+  const holdings = summarizeHoldings(filtered);
+  return holdings[asset]?.qty || 0;
+}
+
+export function validateTransactions(transactions) {
+  return runLedger(transactions);
 }
 
 function assetPrice(prices, key) {
   return Number(prices?.assets?.[key]?.price) || 0;
 }
 
-export function portfolioValue(purchases, prices) {
-  const holdings = summarizeHoldings(purchases);
+export function portfolioValue(transactions, prices) {
+  const ledger = runLedger(transactions);
+  const holdings = summarizeHoldings(transactions);
   const breakdown = {};
   let totalValue = 0;
   let totalCost = 0;
+  let totalRealized = 0;
 
   for (const [key, meta] of Object.entries(ASSET_META)) {
     const h = holdings[key];
     const price = assetPrice(prices, meta.priceKey);
     const value = h.qty * price;
+    const unrealized = value - h.cost;
     breakdown[key] = {
       ...meta,
       qty: h.qty,
@@ -100,20 +200,31 @@ export function portfolioValue(purchases, prices) {
       avgCost: h.avgCost,
       price,
       value,
-      pnl: value - h.cost,
-      pnlPercent: h.cost > 0 ? ((value - h.cost) / h.cost) * 100 : 0,
+      realized: h.realized || 0,
+      unrealized,
+      pnl: unrealized,
+      pnlPercent: h.cost > 0 ? (unrealized / h.cost) * 100 : 0,
     };
     totalValue += value;
     totalCost += h.cost;
+    totalRealized += h.realized || 0;
   }
+
+  const unrealizedPnl = totalValue - totalCost;
+  const totalPnl = unrealizedPnl + totalRealized;
 
   return {
     holdings,
     breakdown,
     totalValue,
     totalCost,
-    totalPnl: totalValue - totalCost,
-    totalPnlPercent: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
+    unrealizedPnl,
+    unrealizedPnlPercent: totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0,
+    realizedPnl: totalRealized,
+    totalPnl,
+    totalPnlPercent: totalCost > 0 ? (totalPnl / totalCost) * 100 : 0,
+    ledgerOk: ledger.ok,
+    ledgerError: ledger.error,
   };
 }
 

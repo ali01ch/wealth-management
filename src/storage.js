@@ -15,6 +15,14 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizePurchases(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map((item) => ({
+    ...item,
+    kind: item?.kind === 'sell' ? 'sell' : 'buy',
+  }));
+}
+
 export function loadState() {
   try {
     if (typeof localStorage === 'undefined') return clone(DEFAULT_STATE);
@@ -22,7 +30,7 @@ export function loadState() {
     if (!raw) return clone(DEFAULT_STATE);
     const parsed = JSON.parse(raw);
     return {
-      purchases: Array.isArray(parsed.purchases) ? parsed.purchases : [],
+      purchases: normalizePurchases(parsed.purchases),
       goals: Array.isArray(parsed.goals) ? parsed.goals : [],
       settings: {
         ...DEFAULT_STATE.settings,
@@ -53,7 +61,7 @@ export function importState(jsonText) {
     throw new Error('فرمت فایل نامعتبر است');
   }
   const state = {
-    purchases: Array.isArray(parsed.purchases) ? parsed.purchases : [],
+    purchases: normalizePurchases(parsed.purchases),
     goals: Array.isArray(parsed.goals) ? parsed.goals : [],
     settings: {
       ...DEFAULT_STATE.settings,
