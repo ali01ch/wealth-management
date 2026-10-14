@@ -41,9 +41,11 @@ export function showLockScreen() {
     document.body.appendChild(backdrop);
     document.body.classList.add('app-locked');
     const errEl = backdrop.querySelector('#lock-error');
+    let busy = false;
 
-    const showError = (msg) => {
+    const showMessage = (msg, soft = false) => {
       errEl.textContent = msg;
+      errEl.classList.toggle('info', soft);
       errEl.classList.remove('hidden');
     };
 
@@ -55,16 +57,24 @@ export function showLockScreen() {
 
     if (bioOnly) {
       const tryBio = async () => {
+        if (busy) return;
+        busy = true;
         errEl.classList.add('hidden');
+        errEl.classList.remove('info');
+        const btn = backdrop.querySelector('#lock-bio');
+        if (btn) btn.disabled = true;
         try {
           await unlockWithBiometric();
           finish();
         } catch (err) {
-          showError(err.message || 'اثر انگشت ناموفق بود');
+          const cancelled = err?.code === 'BIO_CANCELLED';
+          showMessage(err.message || 'اثر انگشت ناموفق بود', cancelled);
+        } finally {
+          busy = false;
+          if (btn) btn.disabled = false;
         }
       };
       backdrop.querySelector('#lock-bio')?.addEventListener('click', tryBio);
-      // تلاش خودکار برای باز شدن دیالوگ بیومتریک
       setTimeout(() => {
         tryBio();
       }, 250);
@@ -78,14 +88,14 @@ export function showLockScreen() {
       e.preventDefault();
       const pin = pinInput.value;
       if (!isPinValid(pin)) {
-        showError('PIN باید ۴ تا ۸ رقم باشد');
+        showMessage('PIN باید ۴ تا ۸ رقم باشد');
         return;
       }
       try {
         await unlockWithPin(pin);
         finish();
       } catch (err) {
-        showError(err.message || 'ورود ناموفق بود');
+        showMessage(err.message || 'ورود ناموفق بود');
       }
     });
   });

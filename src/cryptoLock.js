@@ -311,32 +311,41 @@ export async function registerBiometric() {
 
   const userId = crypto.getRandomValues(new Uint8Array(16));
   const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const cred = await navigator.credentials.create({
-    publicKey: {
-      challenge,
-      rp: {
-        name: 'دارایی من',
-        id: location.hostname === 'localhost' ? 'localhost' : location.hostname,
+  let cred;
+  try {
+    cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: {
+          name: 'دارایی من',
+          id: location.hostname === 'localhost' ? 'localhost' : location.hostname,
+        },
+        user: {
+          id: userId,
+          name: 'wealth-local-user',
+          displayName: 'کاربر محلی',
+        },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7 },
+          { type: 'public-key', alg: -257 },
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required',
+          residentKey: 'preferred',
+        },
+        timeout: 60000,
       },
-      user: {
-        id: userId,
-        name: 'wealth-local-user',
-        displayName: 'کاربر محلی',
-      },
-      pubKeyCredParams: [
-        { type: 'public-key', alg: -7 },
-        { type: 'public-key', alg: -257 },
-      ],
-      authenticatorSelection: {
-        authenticatorAttachment: 'platform',
-        userVerification: 'required',
-        residentKey: 'preferred',
-      },
-      timeout: 60000,
-    },
-  });
+    });
+  } catch (err) {
+    throw mapWebAuthnError(err);
+  }
 
-  if (!cred) throw new Error('ثبت اثر انگشت لغو شد');
+  if (!cred) {
+    const soft = new Error('احراز هویت لغو شد. برای ورود دوباره دکمه را بزنید.');
+    soft.code = 'BIO_CANCELLED';
+    throw soft;
+  }
   const id = bufToB64(cred.rawId);
   const rawDek = await exportRawKey(memoryDek);
   saveLockMeta({
@@ -365,6 +374,30 @@ export async function clearBiometric() {
   saveLockMeta({ ...meta, biometric: null });
 }
 
+export function mapWebAuthnError(err) {
+  const name = err?.name || '';
+  const msg = String(err?.message || '');
+  if (
+    name === 'NotAllowedError' ||
+    name === 'AbortError' ||
+    /timed out|not allowed|aborted|cancel/i.test(msg)
+  ) {
+    const soft = new Error('احراز هویت لغو شد. برای ورود دوباره دکمه را بزنید.');
+    soft.code = 'BIO_CANCELLED';
+    return soft;
+  }
+  if (name === 'InvalidStateError') {
+    return new Error('درخواست قبلی هنوز باز است؛ کمی صبر کنید و دوباره تلاش کنید.');
+  }
+  if (name === 'NotSupportedError') {
+    return new Error('این دستگاه از اثر انگشت پشتیبانی نمی‌کند.');
+  }
+  if (name === 'SecurityError') {
+    return new Error('ورود بیومتریک در این بستر امن نیست (HTTPS لازم است).');
+  }
+  return new Error('اثر انگشت ناموفق بود. دوباره تلاش کنید.');
+}
+
 export async function unlockWithBiometric() {
   const meta = loadLockMeta();
   if (!meta.enabled || !meta.biometric?.credentialId) {
@@ -381,16 +414,25 @@ export async function unlockWithBiometric() {
       id: b64ToBuf(meta.biometric.credentialId),
     },
   ];
-  const assertion = await navigator.credentials.get({
-    publicKey: {
-      challenge,
-      allowCredentials: allow,
-      userVerification: 'required',
-      timeout: 60000,
-    },
-  });
+
+  let assertion;
+  try {
+    assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: allow,
+        userVerification: 'required',
+        timeout: 60000,
+      },
+    });
+  } catch (err) {
+    throw mapWebAuthnError(err);
+  }
+
   if (!assertion) {
-    throw new Error('احراز هویت لغو شد');
+    const soft = new Error('احراز هویت لغو شد. برای ورود دوباره دکمه را بزنید.');
+    soft.code = 'BIO_CANCELLED';
+    throw soft;
   }
 
   const dek = await importRawKey(b64ToBuf(meta.biometric.bioDek));
