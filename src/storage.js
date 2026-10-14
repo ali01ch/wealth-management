@@ -7,6 +7,7 @@ const DEFAULT_STATE = {
     silverPurity: '999',
     refreshMinutes: 5,
     manualPrices: null,
+    theme: 'auto',
   },
 };
 

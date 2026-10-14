@@ -1,7 +1,13 @@
 /**
  * جداکننده سه‌رقمی زنده برای فیلدهای مبلغ.
- * مقدار نمایشی با ویرگول؛ مقدار خام از parseMoneyInput خوانده می‌شود.
+ * جداکننده هزارگان: U+066C (٬)
+ * جداکننده اعشار: نقطه (.)
  */
+
+/** ARABIC THOUSANDS SEPARATOR */
+export const THOUSANDS_SEP = '\u066C';
+/** Decimal separator */
+export const DECIMAL_SEP = '.';
 
 export function parseMoneyInput(value) {
   if (value == null || value === '') return null;
@@ -9,7 +15,7 @@ export function parseMoneyInput(value) {
     .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
     .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
     .replace(/٫/g, '.')
-    .replace(/,/g, '')
+    .replace(new RegExp(`[${THOUSANDS_SEP},]`, 'g'), '')
     .replace(/[^\d.]/g, '');
 
   if (!normalized) return null;
@@ -30,11 +36,11 @@ export function formatMoneyInput(value, { allowDecimal = true } = {}) {
   const negative = n < 0;
   const abs = Math.abs(n);
   const [intRaw, decRaw] = String(abs).split('.');
-  const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, THOUSANDS_SEP);
 
   let text = intFormatted;
   if (allowDecimal && decRaw != null && decRaw !== '') {
-    text += `.${decRaw}`;
+    text += `${DECIMAL_SEP}${decRaw}`;
   }
   return negative ? `-${text}` : text;
 }
@@ -66,10 +72,10 @@ export function enhanceMoneyInput(input, { allowDecimal = true } = {}) {
 
   input.addEventListener('input', () => {
     const fromEnd = caretOffsetFromEnd(input);
-    const stripped = String(input.value).replace(/,/g, '');
-    const trailingDot = allowDecimal && /[.\u066B]$/.test(stripped);
+    const stripped = String(input.value).replace(new RegExp(`[${THOUSANDS_SEP},]`, 'g'), '');
+    const trailingDecimal = allowDecimal && /\.$/.test(stripped);
     let formatted = formatMoneyInput(input.value, { allowDecimal });
-    if (trailingDot && formatted !== '' && !formatted.endsWith('.')) {
+    if (trailingDecimal && formatted !== '' && !formatted.endsWith('.')) {
       formatted += '.';
     }
     if (input.value !== formatted) {

@@ -12,6 +12,7 @@ import { renderPrices } from './ui/pricesView.js';
 import { renderGoldSignal } from './ui/goldSignal.js';
 import { renderGoals } from './ui/goals.js';
 import { renderSettings } from './ui/settings.js';
+import { applyTheme, watchSystemTheme } from './theme.js';
 
 const view = document.getElementById('view');
 const priceStatus = document.getElementById('price-status');
@@ -23,6 +24,8 @@ let currentTab = 'prices';
 let refreshTimer = null;
 let fetching = false;
 
+applyTheme(state.settings.theme);
+
 function setStatus(text) {
   if (priceStatus) priceStatus.textContent = text;
 }
@@ -30,6 +33,7 @@ function setStatus(text) {
 function persist(nextState) {
   state = nextState;
   saveState(state);
+  applyTheme(state.settings.theme);
   scheduleRefresh();
   render();
 }
@@ -105,6 +109,11 @@ refreshBtn?.addEventListener('click', () => refreshPrices(true));
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshPrices(false);
 });
+
+watchSystemTheme(
+  () => state.settings.theme,
+  () => applyTheme(state.settings.theme),
+);
 
 render();
 scheduleRefresh();

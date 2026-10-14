@@ -1,11 +1,34 @@
 import { enhanceMoneyInputs, formatMoneyInput, parseMoneyInput } from '../moneyInput.js';
 import { clearState, exportState, importState } from '../storage.js';
+import { applyTheme, normalizeTheme } from '../theme.js';
 
 export function renderSettings(root, { state, onChange, onRefreshPrices }) {
   const s = state.settings;
+  const theme = normalizeTheme(s.theme);
   const moneyVal = (v) => (v == null || v === '' ? '' : formatMoneyInput(v));
 
   root.innerHTML = `
+    <section class="card">
+      <h2>ظاهر</h2>
+      <div class="field">
+        <label>تم</label>
+        <div class="theme-seg" role="radiogroup" aria-label="تم">
+          <label>
+            <input type="radio" name="theme" value="light" ${theme === 'light' ? 'checked' : ''} />
+            <span>روشن</span>
+          </label>
+          <label>
+            <input type="radio" name="theme" value="dark" ${theme === 'dark' ? 'checked' : ''} />
+            <span>تیره</span>
+          </label>
+          <label>
+            <input type="radio" name="theme" value="auto" ${theme === 'auto' ? 'checked' : ''} />
+            <span>خودکار</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
     <section class="card">
       <h2>تنظیمات قیمت</h2>
       <form class="form" id="settings-form">
@@ -62,6 +85,18 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
 
   enhanceMoneyInputs(root.querySelector('#settings-form'));
 
+  root.querySelectorAll('input[name="theme"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      const nextTheme = normalizeTheme(radio.value);
+      applyTheme(nextTheme);
+      onChange({
+        ...state,
+        settings: { ...state.settings, theme: nextTheme },
+      });
+    });
+  });
+
   root.querySelector('#settings-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -75,6 +110,7 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
     const next = {
       ...state,
       settings: {
+        ...state.settings,
         silverPurity: String(fd.get('silverPurity')),
         refreshMinutes: Math.max(1, Number(fd.get('refreshMinutes')) || 5),
         manualPrices: hasManual ? manual : null,
@@ -110,6 +146,7 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
     try {
       const text = await file.text();
       const imported = importState(text);
+      applyTheme(imported.settings?.theme);
       onChange(imported);
       alert('داده‌ها با موفقیت وارد شدند.');
     } catch (err) {
@@ -121,7 +158,9 @@ export function renderSettings(root, { state, onChange, onRefreshPrices }) {
 
   root.querySelector('#reset-data')?.addEventListener('click', () => {
     if (confirm('همه خریدها، اهداف و تنظیمات پاک شوند؟')) {
-      onChange(clearState());
+      const cleared = clearState();
+      applyTheme(cleared.settings.theme);
+      onChange(cleared);
     }
   });
 
